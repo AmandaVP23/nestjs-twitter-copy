@@ -1,26 +1,51 @@
-import { BaseEntity, Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import { ChildEntity, Column, OneToMany } from 'typeorm';
+import { SuperUser } from './super-user.entity';
+import { Tweet } from '../../tweets/entities/tweet.entity';
+import { RelationCountAttribute } from 'typeorm/query-builder/relation-count/RelationCountAttribute';
+import { RelationCountMetadata } from 'typeorm/metadata/RelationCountMetadata';
+import { QueryExpressionMap } from 'typeorm/query-builder/QueryExpressionMap';
+import { Follow } from './follow.entity';
 
-@Entity()
-@Unique(['email', 'username'])
-export class User extends BaseEntity {
-    @PrimaryGeneratedColumn()
-    id: number;
-
-    @Column()
-    email: string;
-
-    @Column()
+@ChildEntity()
+export class User extends SuperUser {
+    @Column({ unique: true })
     username: string;
 
     @Column()
-    name: string;
+    avatarUrl: string;
 
-    @Column()
-    password: string;
+    @OneToMany(() => Tweet, tweet => tweet.user, { eager: false, onUpdate: 'CASCADE', onDelete: 'CASCADE' })
+    tweets: Tweet[];
 
-    async validatePassword(password: string): Promise<boolean> {
-        const hash = await bcrypt.hash(password);
-        return hash === this.password;
+    @OneToMany(() => Follow, f => f.follower, { eager: false, onUpdate: 'CASCADE', onDelete: 'CASCADE' })
+    followers: Follow[];
+
+    @OneToMany(() => Follow, f => f.user, { eager: false, onUpdate: 'CASCADE', onDelete: 'CASCADE' })
+    following: Follow[];
+
+    @Column({ default: 0 })
+    followersCount: number;
+
+    @Column({ default: 0 })
+    followingCount: number;
+
+    async incrementFollowers() {
+        this.followersCount++;
+        await this.save();
+    }
+
+    async incrementFollowing() {
+        this.followingCount++;
+        await this.save();
+    }
+
+    async decrementFollowers() {
+        this.followersCount--;
+        await this.save();
+    }
+
+    async decrementFollowing() {
+        this.followingCount++;
+        await this.save();
     }
 }
